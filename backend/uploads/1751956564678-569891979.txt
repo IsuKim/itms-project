@@ -1,0 +1,49 @@
+Local 테스트 WM 제품군 구성
+
+DB User: isu(by pass)
+
+Table Name: 
+IS(APIGW): WMIS1015
+IS(TN):	   WMTN1015
+
+Port:
+API Gateway 9072
+Data Store 	9042
+UM Server	8000
+MWS			
+
+
+
+
+API Key
+sk-proj-XZvm7LI6gq8bRKzf7W78T3BlbkFJiq66PelrxSnjDNJwcN7K
+
+
+
+
+
+
+
+
+Kh_lee@northstar.co.kr
+@NorthStar20060501
+
+
+
+northstar2@
+
+decryptfile
+문자열에서 마지막 4자를 제거(GPG가 파일을 해독/검증할 때 수행하는 작업)
+
+decryptfile2
+파일을 출력 변수로 해독하고 binary 파일에 대해 작동
+
+
+
+3.38.7.77 25432
+계정, 스키마 등등 = ichain5/''
+gzip plugin 적용 (docker, Linux)
+
+pub-sub 구조 all or nothing batch insert만
+db to db 
+request에 publish로 데이터 미리 만들어두기.

@@ -5,10 +5,22 @@ const getRepliesByTicketId = async (ticket_id) => {
     SELECT r.*, u.name AS author_name, u.role
     FROM ticket_replies r
     JOIN users u ON r.author_id = u.id
-    WHERE ticket_id = $1
+    WHERE r.ticket_id = $1
     ORDER BY r.created_at ASC
   `, [ticket_id]);
-  return result.rows;
+
+  const replies = result.rows;
+
+  // 각 댓글에 첨부파일 추가
+  for (const reply of replies) {
+    const filesRes = await pool.query(`
+      SELECT filename, originalname FROM ticket_reply_files
+      WHERE reply_id = $1
+    `, [reply.id]);
+    reply.files = filesRes.rows;
+  }
+
+  return replies;
 };
 
 const addReply = async ({ ticket_id, author_id, message }) => {

@@ -1,10 +1,60 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
+const multer = require('multer');
+const path = require('path');
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+const fs = require('fs');
 
 const { createTicket } = require('../models/ticketModel');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
 const { getRepliesByTicketId, addReply } = require('../models/replyModel');
+
+// 티켓 첨부파일 삭제
+router.delete('/files/ticket/:filename', verifyToken, requireAdmin, async (req, res) => {
+  const { filename } = req.params;
+
+  try {
+    // 1. DB에서 삭제
+    await pool.query(`DELETE FROM ticket_files WHERE filename = $1`, [filename]);
+
+    // 2. 실제 파일 삭제
+    const filePath = path.join(__dirname, '..', 'uploads', filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    res.json({ message: '파일 삭제 완료' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '파일 삭제 실패' });
+  }
+});
+
+// 댓글 첨부파일 삭제
+router.delete('/files/reply/:filename', verifyToken, requireAdmin, async (req, res) => {
+  const { filename } = req.params;
+
+  try {
+    await pool.query(`DELETE FROM ticket_reply_files WHERE filename = $1`, [filename]);
+
+    const filePath = path.join(__dirname, '..', 'uploads', filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    res.json({ message: '댓글 파일 삭제 완료' });
+  } catch (err) {
+    res.status(500).json({ error: '댓글 파일 삭제 실패' });
+  }
+});
 
 // 내 티켓 목록 (고객)
 router.get('/my', verifyToken, async (req, res) => {
@@ -73,53 +123,119 @@ router.get('/', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-// 티켓 상세 정보 + 댓글 목록
+// 티켓 상세 정보 + 댓글 + 첨부파일
 router.get('/:id', verifyToken, async (req, res) => {
   const ticketId = req.params.id;
 
   try {
+    // 1. 티켓 정보
     const ticketRes = await pool.query('SELECT * FROM tickets WHERE id = $1', [ticketId]);
     if (ticketRes.rows.length === 0) return res.status(404).json({ message: '티켓 없음' });
+    const ticket = ticketRes.rows[0];
 
+    // ✅ 2. 티켓 첨부파일 정보 추가
+    const fileRes = await pool.query(
+      `SELECT filename, originalname FROM ticket_files WHERE ticket_id = $1`,
+      [ticketId]
+    );
+    ticket.files = fileRes.rows;
+
+    // 3. 댓글 + 첨부파일
     const replies = await getRepliesByTicketId(ticketId);
 
-    res.json({ ticket: ticketRes.rows[0], replies });
+    res.json({ ticket, replies });
   } catch (err) {
     res.status(500).json({ error: '티켓 상세 조회 실패' });
   }
 });
 
 // 댓글 추가
-router.post('/:id/replies', verifyToken, async (req, res) => {
+router.post('/:id/replies', verifyToken, upload.array('files', 5), async (req, res) => {
   const ticketId = req.params.id;
   const { message } = req.body;
   const author_id = req.user.id;
-
-  if (!message) return res.status(400).json({ message: '내용을 입력하세요.' });
+  
+  if (!message && req.files.length === 0) {
+    return res.status(400).json({ message: '내용 또는 파일 중 하나는 필요합니다.' });
+  }
 
   try {
-    const reply = await addReply({ ticket_id: ticketId, author_id, message });
-    res.status(201).json(reply);
-  } catch {
+    const replyRes = await pool.query(
+      `INSERT INTO ticket_replies (ticket_id, author_id, message)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [ticketId, author_id, message]
+    );
+    const replyId = replyRes.rows[0].id;
+
+    // 파일 저장
+    for (const file of req.files) {
+      const fixedOriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8'); //PostgreSql 한글 깨짐 처리
+      await pool.query(
+        `INSERT INTO ticket_reply_files (reply_id, filename, originalname)
+         VALUES ($1, $2, $3)`,
+        [replyId, file.filename, fixedOriginalName]
+      );
+    }
+
+    res.status(201).json({ message: '댓글 등록 완료', reply_id: replyId });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: '댓글 등록 실패' });
   }
 });
 
 // 티켓 생성
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, upload.array('files', 5), async (req, res) => {
   const { title, description, urgency, product } = req.body;
   const customer_id = req.user.id;
 
-  if (!title || !description) {
-    return res.status(400).json({ message: '제목과 설명은 필수입니다.' });
-  }
-
   try {
-    const newTicket = await createTicket({ title, description, urgency, product, customer_id });
-    res.status(201).json(newTicket);
+    const result = await pool.query(
+      `INSERT INTO tickets (title, description, urgency, product, customer_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [title, description, urgency, product, customer_id]
+    );
+    const ticketId = result.rows[0].id;
+
+    // 파일 정보 저장
+    const files = req.files;
+    for (const file of files) {
+      const fixedOriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8'); //PostgreSql 한글 깨짐 처리
+      await pool.query(
+        `INSERT INTO ticket_files (ticket_id, filename, originalname)
+         VALUES ($1, $2, $3)`,
+        [ticketId, file.filename, fixedOriginalName]
+      );
+    }
+
+    res.status(201).json({ message: '티켓 생성 완료', ticket_id: ticketId });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: '티켓 생성 실패' });
   }
 });
+
+// 관리자: 티켓 상태 변경
+router.patch('/:id/status', verifyToken, requireAdmin, async (req, res) => {
+  const ticketId = req.params.id;
+  const { status } = req.body;
+
+  const allowed = ['접수', '진행중', '답변 완료', '종결'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ message: '유효하지 않은 상태입니다.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'UPDATE tickets SET status = $1 WHERE id = $2 RETURNING *',
+      [status, ticketId]
+    );
+    res.json(result.rows[0]);
+  } catch {
+    res.status(500).json({ error: '상태 변경 실패' });
+  }
+});
+
+
 
 module.exports = router;

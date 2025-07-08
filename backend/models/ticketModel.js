@@ -9,4 +9,5 @@ const createTicket = async ({ title, description, urgency, product, customer_id 
   return result.rows[0];
 };
 
+
 module.exports = { createTicket };

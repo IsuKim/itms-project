@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTicketDetail, postReply } from '../api/ticket';
+import { getTicketDetail, postReply, updateTicketStatus } from '../api/ticket';
 
 const AdminTicketDetailPage = () => {
   const { id } = useParams();
@@ -27,6 +27,16 @@ const AdminTicketDetailPage = () => {
     fetchDetail();
   };
 
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateTicketStatus(id, newStatus, token);
+      fetchDetail(); // 상태 갱신
+    } catch {
+      alert('상태 변경 실패');
+    }
+  };
+
+
   useEffect(() => {
     fetchDetail();
   }, [id]);
@@ -39,7 +49,16 @@ const AdminTicketDetailPage = () => {
       <p><strong>제목:</strong> {ticket.title}</p>
       <p><strong>고객 설명:</strong> {ticket.description}</p>
       <p><strong>긴급도:</strong> {ticket.urgency}</p>
-      <p><strong>상태:</strong> {ticket.status}</p>
+      <p> <strong>상태:</strong> {ticket.status}{' '}
+        {ticket.status === '접수' && (
+          <button onClick={() => handleStatusChange('진행중')}>진행중으로 변경</button>
+        )}
+        {ticket.status === '진행중' && (
+          <button onClick={() => handleStatusChange('답변 완료')}>답변 완료로</button>
+        )}
+        {ticket.status === '답변 완료' && (
+          <button onClick={() => handleStatusChange('종결')}>종결 처리</button>
+      )}</p>
 
       <h3>대화 히스토리</h3>
       <ul>

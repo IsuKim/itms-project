@@ -19,7 +19,7 @@ router.patch('/:id/approve', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-// [GET] 모든 사용자 조회 (관리자만)
+// 모든 사용자 조회 (관리자만)
 router.get('/', verifyToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, email, name, company_name, is_approved, role FROM users ORDER BY created_at DESC');
