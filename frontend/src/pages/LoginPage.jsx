@@ -1,33 +1,35 @@
 import React, { useState } from 'react';
 import { login, getMe } from '../api/auth';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const res = await login(form);
-    const token = res.data.token;
-    localStorage.setItem('token', token);
+    e.preventDefault();
+    try {
+      const res = await login(form);
+      const token = res.data.token;
+      localStorage.setItem('token', token);
 
-    const me = await getMe(token);
-    localStorage.setItem('role', me.data.role);
+      const me = await getMe(token);
+      localStorage.setItem('role', me.data.role);
 
+      // ✅ role에 따라 분기
+      if (me.data.role === 'admin') {
+        navigate('/admin/tickets');
+      } else {
+        navigate('/my-tickets');
+      }
 
-    if (!me.data.is_approved) {
-      setMessage('로그인 성공. (관리자 승인 대기 중)');
-    } else {
-      setMessage(`환영합니다, ${me.data.name}님!`);
+    } catch (err) {
+      setMessage(err.response?.data?.message || '로그인 실패');
     }
-
-  } catch (err) {
-    setMessage(err.response?.data?.message || '로그인 실패');
-  }
-};
+  };
 
   return (
     <div>
