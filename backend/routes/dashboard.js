@@ -31,4 +31,47 @@ router.get('/stats', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// SLA 자동 종결 처리 기능
+router.post('/auto-close', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    // 1. 답변 완료 상태의 티켓
+    const ticketRes = await pool.query(`
+      SELECT t.id FROM tickets t
+      WHERE t.status = '답변 완료'
+    `);
+
+    let closed = 0;
+
+    for (const ticket of ticketRes.rows) {
+      const replyRes = await pool.query(
+        `SELECT r.*, u.role
+        FROM ticket_replies r
+        JOIN users u ON r.author_id = u.id
+        WHERE r.ticket_id = $1
+        ORDER BY r.created_at DESC
+        LIMIT 1`,
+        [ticket.id]
+      );
+      const lastReply = replyRes.rows[0];
+      if (!lastReply) continue;
+
+      // 2. 마지막 댓글이 관리자이고 7일 지났으면 종결 처리
+      const isAdmin = lastReply.role === 'admin';
+      const isOld = new Date() - new Date(lastReply.created_at) > 7 * 24 * 60 * 60 * 1000;
+
+      if (isAdmin && isOld) {
+        await pool.query(
+          `UPDATE tickets SET status = '종결' WHERE id = $1`,
+          [ticket.id]
+        );
+        closed++;
+      }
+    }
+
+    res.json({ message: `${closed}건 자동 종결 처리됨` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '자동 종결 처리 실패' });
+  }
+});
 module.exports = router;

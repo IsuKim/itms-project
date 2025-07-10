@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { getTicketDetail, postReply, deleteTicketFile, deleteReplyFile } from '../api/ticket';
+
+const isImageFile = (filename) => {
+  return /\.(png|jpe?g|gif)$/i.test(filename);
+};
 
 const TicketDetailBase = ({ ticketId, token, role }) => {
   const [ticket, setTicket] = useState(null);
@@ -29,6 +34,22 @@ const TicketDetailBase = ({ ticketId, token, role }) => {
   };
 
   useEffect(() => {
+    const fetchDetail = async () => {
+      try {
+        const res = await getTicketDetail(ticketId, token);
+        setTicket(res.data.ticket);
+        setReplies(res.data.replies);
+
+        // ✅ 데이터 로드 성공 후에 읽음 처리
+        await axios.post(`${process.env.REACT_APP_API_URL}/tickets/${ticketId}/read`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+      } catch (err) {
+        alert('티켓 상세 조회 실패');
+      }
+    };
+
     fetchDetail();
   }, [ticketId]);
 
@@ -48,9 +69,21 @@ const TicketDetailBase = ({ ticketId, token, role }) => {
           <ul>
             {ticket.files.map(f => (
               <li key={f.filename}>
-                <a href={`http://localhost:5000/uploads/${f.filename}`} target="_blank" rel="noreferrer">
-                  📎 {f.originalname}
-                </a>
+                {isImageFile(f.originalname) ? (
+                  <img
+                    src={`http://localhost:5000/uploads/${f.filename}`}
+                    alt={f.originalname}
+                    style={{ width: '120px', marginBottom: '6px', borderRadius: '4px' }}
+                  />
+                ) : (
+                  <a
+                    href={`http://localhost:5000/uploads/${f.filename}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    📎 {f.originalname}
+                  </a>
+                )}
                 {role === 'admin' && (
                   <button onClick={() => {
                     if (window.confirm('삭제하시겠습니까?')) {
@@ -74,12 +107,24 @@ const TicketDetailBase = ({ ticketId, token, role }) => {
               <ul>
                 {r.files.map(f => (
                   <li key={f.filename}>
-                    <a href={`http://localhost:5000/uploads/${f.filename}`} target="_blank" rel="noreferrer">
-                      📎 {f.originalname}
-                    </a>
+                    {isImageFile(f.originalname) ? (
+                      <img
+                        src={`http://localhost:5000/uploads/${f.filename}`}
+                        alt={f.originalname}
+                        style={{ width: '100px', marginBottom: '4px', borderRadius: '4px' }}
+                      />
+                    ) : (
+                      <a
+                        href={`http://localhost:5000/uploads/${f.filename}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        📎 {f.originalname}
+                      </a>
+                    )}
                     {role === 'admin' && (
                       <button onClick={() => {
-                        if (window.confirm('댓글 첨부파일 삭제할까요?')) {
+                        if (window.confirm('삭제하시겠습니까?')) {
                           deleteReplyFile(f.filename, token).then(fetchDetail);
                         }
                       }}>❌</button>

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getMyTickets } from '../api/ticket';
+import { getMyTickets, getUnreadCounts } from '../api/ticket';
 
 const MyTicketListPage = () => {
   const [tickets, setTickets] = useState([]);
   const [filters, setFilters] = useState({ status: '', urgency: '', keyword: '' });
+  const [unreadMap, setUnreadMap] = useState({});
+
   const token = localStorage.getItem('token');
 
   const fetchTickets = async () => {
@@ -18,7 +20,16 @@ const MyTicketListPage = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, [filters]);
+
+    // 미확인 댓글 수 요청
+    getUnreadCounts(token).then(res => {
+      const map = {};
+      res.data.forEach(r => {
+        map[r.ticket_id] = Number(r.unread_count);
+      });
+      setUnreadMap(map);
+    });
+  }, []);
 
   const handleChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -56,7 +67,20 @@ const MyTicketListPage = () => {
         <tbody>
           {tickets.map(ticket => (
             <tr key={ticket.id}>
-              <td><Link to={`/my-tickets/${ticket.id}`}>{ticket.title}</Link></td>
+              <td><Link to={`/my-tickets/${ticket.id}`}>{ticket.title}</Link>
+                {unreadMap[ticket.id] > 0 && (
+                  <span style={{
+                    marginLeft: '6px',
+                    backgroundColor: 'red',
+                    color: 'white',
+                    borderRadius: '8px',
+                    padding: '2px 6px',
+                    fontSize: '0.75rem'
+                  }}>
+                    {unreadMap[ticket.id]}
+                  </span>
+                )}
+              </td>
               <td>
                 <span style={{
                     color:

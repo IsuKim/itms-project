@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getDashboardStats } from '../api/dashboard';
+import { getDashboardStats, autoCloseTickets } from '../api/dashboard';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff6666'];
@@ -41,6 +41,19 @@ const AdminDashboardPage = () => {
         <li>📋 전체 티켓 수: {stats.전체티켓}</li>
         <li>🧍 고객 수: {stats.고객수}</li>
         <li>🧑‍💼 관리자 수: {stats.관리자수}</li>
+        <button onClick={async () => {
+          if (window.confirm('답변 완료된 티켓 중 7일간 고객 응답 없는 티켓을 종결 처리할까요?')) {
+            try {
+              const res = await autoCloseTickets(token);
+              alert(res.data.message);
+              window.location.reload(); // 통계 다시 불러오기
+            } catch {
+              alert('자동 종결 실패');
+            }
+          }
+        }}>
+          🧠 SLA 자동 종결 실행
+        </button>
       </ul>
         <h3>🎯 티켓 상태 분포</h3>
         <PieChart width={400} height={300}>
