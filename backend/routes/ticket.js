@@ -57,32 +57,33 @@ router.delete('/files/reply/:filename', verifyToken, requireAdmin, async (req, r
 });
 
 // 내 티켓별 미확인 관리자 댓글 수
-router.get('/my/unread-counts', verifyToken, async (req, res) => {
-  const userId = req.user.id;
+// router.get('/my/unread-counts', verifyToken, async (req, res) => {
+//   const userId = req.user.id;
 
-  try {
-    // 각 티켓에 대해 마지막 확인 시간과 관리자 댓글 비교
-    const result = await pool.query(`
-      SELECT
-        t.id AS ticket_id,
-        COUNT(r.*) FILTER (
-          WHERE u.role = 'admin'
-          AND (tr.last_read_at IS NULL OR r.created_at > tr.last_read_at)
-        ) AS unread_count
-      FROM tickets t
-      LEFT JOIN ticket_replies r ON t.id = r.ticket_id
-      LEFT JOIN users u ON r.author_id = u.id
-      LEFT JOIN ticket_reads tr ON t.id = tr.ticket_id AND tr.user_id = $1
-      WHERE t.customer_id = $1
-      GROUP BY t.id
-    `, [userId]);
+//   try {
+//     // 각 티켓에 대해 마지막 확인 시간과 관리자 댓글 비교
+//     const result = await pool.query(`
+//       SELECT
+//         t.id AS ticket_id,
+//         COUNT(r.*) FILTER (
+//           WHERE u.role = 'admin'
+//           AND (tr.last_read_at IS NULL OR r.created_at > tr.last_read_at)
+//         ) AS unread_count
+//       FROM tickets t
+//       LEFT JOIN ticket_replies r ON t.id = r.ticket_id
+//       LEFT JOIN users u ON r.author_id = u.id
+//       LEFT JOIN ticket_reads tr ON t.id = tr.ticket_id AND tr.user_id = $1
+//       WHERE t.customer_id = $1
+//       GROUP BY t.id
+//     `, [userId]);
 
-    res.json(result.rows); // [{ ticket_id: 1, unread_count: 2 }, ...]
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '미확인 댓글 수 조회 실패' });
-  }
-});
+//     res.json(result.rows); // [{ ticket_id: 1, unread_count: 2 }, ...]
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: '미확인 댓글 수 조회 실패' });
+//   }
+// });
+
 // 관리자 댓글 읽음 처리
 router.post('/:id/read', verifyToken, async (req, res) => {
   const ticketId = req.params.id;
@@ -263,7 +264,7 @@ router.post('/', verifyToken, upload.array('files', 5), async (req, res) => {
 });
 
 // 관리자: 티켓 상태 변경
-router.patch('/:id/status', verifyToken, requireAdmin, async (req, res) => {
+router.put('/:id/status', verifyToken, requireAdmin, async (req, res) => {
   const ticketId = req.params.id;
   const { status } = req.body;
 
@@ -277,8 +278,17 @@ router.patch('/:id/status', verifyToken, requireAdmin, async (req, res) => {
       'UPDATE tickets SET status = $1 WHERE id = $2 RETURNING *',
       [status, ticketId]
     );
-    res.json(result.rows[0]);
-  } catch {
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: '티켓을 찾을 수 없습니다.' });
+    }
+    
+    res.json({ 
+      message: '상태 변경 완료',
+      ticket: result.rows[0]
+    });
+  } catch (err) {
+    console.error('상태 변경 오류:', err);
     res.status(500).json({ error: '상태 변경 실패' });
   }
 });

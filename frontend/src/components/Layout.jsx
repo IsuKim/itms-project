@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, Outlet } from 'react-router-dom';
+import '../css/Layout.css';
 
 const Layout = () => {
   const role = localStorage.getItem('role');
@@ -11,30 +12,34 @@ const Layout = () => {
   };
 
   return (
-    <div>
-      <nav style={{ background: '#eee', padding: '10px' }}>
-        {role === 'admin' ? (
-          <>
-            <Link to="/admin/tickets">📋 티켓 관리</Link> |{" "}
-            <Link to="/admin/users">👥 사용자</Link> |{" "}
-            <Link to="/admin/dashboard">📊 대시보드</Link>
-          </>
-        ) : (
-          <>
-            <Link to="/my-tickets">🏠 내 티켓</Link> |{" "}
-            <Link to="/my-tickets/create">➕ 티켓 작성</Link> |{" "}
-            <Link to="/profile">👤 내 정보</Link>
-          </>
-        )}
-        <span style={{ float: 'right' }}>
-          <button onClick={handleLogout}>🚪 로그아웃</button>
-        </span>
+    <div className="layout-root">
+      <nav className="navbar">
+        <div className="navbar-brand-area">
+          <img src={process.env.PUBLIC_URL + '/metanet-logo.jpg'} alt="logo" className="navbar-logo" />
+          <span className="navbar-brand">ITMS</span>
+        </div>
+        <div className="navbar-links">
+          {role === 'admin' ? (
+            <>
+              <Link to="/admin/tickets" className="nav-link">티켓 관리</Link>
+              <Link to="/admin/users" className="nav-link">사용자</Link>
+              <Link to="/admin/dashboard" className="nav-link">대시보드</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/my-tickets" className="nav-link">내 티켓</Link>
+              <Link to="/my-tickets/create" className="nav-link">티켓 작성</Link>
+              <Link to="/profile" className="nav-link">내 정보</Link>
+            </>
+          )}
+        </div>
+        <div className="navbar-actions">
+          <button className="logout-btn" onClick={handleLogout}>로그아웃</button>
+        </div>
       </nav>
-
-      {/* ❗ 중첩 라우터 표시되는 위치 */}
-      <div style={{ padding: '20px' }}>
+      <main className="layout-content">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 };

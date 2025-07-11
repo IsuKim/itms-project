@@ -1,3 +1,8 @@
-node_modules
-.env
-uploads
+# 공통적으로 모든 node_modules 무시
+**/node_modules/
+
+# 모든 .env 파일 무시
+**/.env
+
+# backend/uploads 폴더 무시
+backend/uploads/
