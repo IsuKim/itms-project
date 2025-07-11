@@ -19,8 +19,8 @@ const AdminDashboardPage = () => {
         setLoading(true);
         const res = await getDashboardStats(token);
         setStats(res.data);
-      } catch {
-        alert('통계 조회 실패');
+      } catch (error) {
+        showToast('통계 조회에 실패했습니다.', 'error');
       } finally {
         setLoading(false);
       }
