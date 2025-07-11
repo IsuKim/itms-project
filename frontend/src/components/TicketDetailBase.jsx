@@ -120,16 +120,21 @@ const TicketDetailBase = ({ ticketId, token, role }) => {
   };
 
   useEffect(() => {
-    fetchDetail();
-  }, [ticketId]);
+    const markAsRead = async () => {
+      try {
+        await axios.post(
+          `${process.env.REACT_APP_API_URL}/tickets/${ticketId}/read`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        console.error("읽음 처리 실패", err);
+      }
+    };
 
-  if (loading) {
-    return (
-      <div className="ticket-detail-container">
-        <div className="loading-spinner">로딩 중...</div>
-      </div>
-    );
-  }
+    markAsRead();      // ✅ 추가된 부분: 서버에 읽음 기록 저장
+    fetchDetail();     // 기존 기능: 티켓 + 댓글 불러오기
+  }, [ticketId]);
 
   if (!ticket) return null;
 

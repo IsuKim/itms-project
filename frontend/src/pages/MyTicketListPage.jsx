@@ -24,16 +24,22 @@ const MyTicketListPage = () => {
   };
 
   useEffect(() => {
-    fetchTickets();
+    const fetchData = async () => {
+      await fetchTickets();
 
-    // 미확인 댓글 수 요청
-    // getUnreadCounts(token).then(res => {
-    //   const map = {};
-    //   res.data.forEach(r => {
-    //     map[r.ticket_id] = Number(r.unread_count);
-    //   });
-    //   setUnreadMap(map);
-    // });
+      try {
+        const res = await getUnreadCounts(token);
+        const map = {};
+        res.data.forEach(r => {
+          map[r.ticket_id] = Number(r.unread_count);
+        });
+        setUnreadMap(map);
+      } catch (err) {
+        console.error("미확인 댓글 수 불러오기 실패", err);
+      }
+    };
+
+    fetchData();
   }, [filters]);
 
   const handleChange = (e) => {

@@ -57,32 +57,56 @@ router.delete('/files/reply/:filename', verifyToken, requireAdmin, async (req, r
 });
 
 // 내 티켓별 미확인 관리자 댓글 수
-// router.get('/my/unread-counts', verifyToken, async (req, res) => {
-//   const userId = req.user.id;
+router.get('/my/unread-counts', verifyToken, async (req, res) => {
+  const userId = req.user.id;
 
-//   try {
-//     // 각 티켓에 대해 마지막 확인 시간과 관리자 댓글 비교
-//     const result = await pool.query(`
-//       SELECT
-//         t.id AS ticket_id,
-//         COUNT(r.*) FILTER (
-//           WHERE u.role = 'admin'
-//           AND (tr.last_read_at IS NULL OR r.created_at > tr.last_read_at)
-//         ) AS unread_count
-//       FROM tickets t
-//       LEFT JOIN ticket_replies r ON t.id = r.ticket_id
-//       LEFT JOIN users u ON r.author_id = u.id
-//       LEFT JOIN ticket_reads tr ON t.id = tr.ticket_id AND tr.user_id = $1
-//       WHERE t.customer_id = $1
-//       GROUP BY t.id
-//     `, [userId]);
+  try {
+    // 각 티켓에 대해 마지막 확인 시간과 관리자 댓글 비교
+    const result = await pool.query(`
+      SELECT
+        t.id AS ticket_id,
+        COUNT(r.*) FILTER (
+          WHERE u.role = 'admin'
+          AND (tr.last_read_at IS NULL OR r.created_at > tr.last_read_at)
+        ) AS unread_count
+      FROM tickets t
+      LEFT JOIN ticket_replies r ON t.id = r.ticket_id
+      LEFT JOIN users u ON r.author_id = u.id
+      LEFT JOIN ticket_reads tr ON t.id = tr.ticket_id AND tr.user_id = $1
+      WHERE t.customer_id = $1
+      GROUP BY t.id
+    `, [userId]);
 
-//     res.json(result.rows); // [{ ticket_id: 1, unread_count: 2 }, ...]
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: '미확인 댓글 수 조회 실패' });
-//   }
-// });
+    res.json(result.rows); // [{ ticket_id: 1, unread_count: 2 }, ...]
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '미확인 댓글 수 조회 실패' });
+  }
+});
+
+// 고객 댓글 알림 확인
+router.get('/admin/unread-counts', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        t.id AS ticket_id,
+        COUNT(r.*) FILTER (
+          WHERE u.role = 'customer'
+          AND (tr.last_read_at IS NULL OR r.created_at > tr.last_read_at)
+        ) AS unread_count
+      FROM tickets t
+      LEFT JOIN ticket_replies r ON t.id = r.ticket_id
+      LEFT JOIN users u ON r.author_id = u.id
+      LEFT JOIN ticket_reads tr ON t.id = tr.ticket_id AND tr.user_id = $1
+      GROUP BY t.id
+    `, [req.user.id]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '관리자 미확인 댓글 수 조회 실패' });
+  }
+});
 
 // 관리자 댓글 읽음 처리
 router.post('/:id/read', verifyToken, async (req, res) => {
@@ -292,7 +316,5 @@ router.put('/:id/status', verifyToken, requireAdmin, async (req, res) => {
     res.status(500).json({ error: '상태 변경 실패' });
   }
 });
-
-
 
 module.exports = router;

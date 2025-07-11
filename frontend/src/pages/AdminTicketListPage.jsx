@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllTickets } from '../api/ticket';
+import { getAllTickets, getAdminUnreadCounts } from '../api/ticket';
 import { Link } from 'react-router-dom';
 import '../css/AdminTicketListPage.css';
 
@@ -12,6 +12,7 @@ const AdminTicketListPage = () => {
   const [filteredTickets, setFilteredTickets] = useState([]);
   const [filters, setFilters] = useState({ status: '', urgency: '', keyword: '' });
   const [loading, setLoading] = useState(true);
+  const [adminUnreadMap, setAdminUnreadMap] = useState({});
 
   useEffect(() => {
     const fetch = async () => {
@@ -37,6 +38,16 @@ const AdminTicketListPage = () => {
     if (filters.urgency) {
       filtered = filtered.filter(ticket => ticket.urgency === filters.urgency);
     }
+    const fetchUnreadCounts = async () => {
+      const token = localStorage.getItem('token');
+      const res = await getAdminUnreadCounts(token); // 새 API 호출
+      const map = {};
+      res.data.forEach(r => {
+        map[r.ticket_id] = Number(r.unread_count);
+      });
+      setAdminUnreadMap(map);
+    };
+    fetchUnreadCounts();
     setFilteredTickets(filtered);
   }, [filters, allTickets]);
 
@@ -126,6 +137,11 @@ const AdminTicketListPage = () => {
                   <Link to={`/admin/tickets/${ticket.id}`} className="admin-ticket-link">
                     {ticket.title}
                   </Link>
+                  {adminUnreadMap[ticket.id] > 0 && (
+                    <span className="unread-badge">
+                      {adminUnreadMap[ticket.id]}
+                    </span>
+                  )}
                 </td>
                 <td>
                   <span className={`status-badge ${getStatusColor(ticket.status)}`}>{ticket.status}</span>

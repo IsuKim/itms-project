@@ -55,7 +55,13 @@ export const deleteReplyFile = (filename, token) =>
     headers: { Authorization: `Bearer ${token}` }
   });
 
-// export const getUnreadCounts = (token) =>
-//   axios.get(`${process.env.REACT_APP_API_URL}/tickets/my/unread-counts`, {
-//     headers: { Authorization: `Bearer ${token}` }
-//   });
+export const getUnreadCounts = (token) =>
+  API.get(`/tickets/my/unread-counts`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+export const getAdminUnreadCounts = async (token) => {
+  return await API.get(`/tickets/admin/unread-counts`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
