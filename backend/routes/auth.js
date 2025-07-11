@@ -26,6 +26,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await getUserByEmail(email);
+    console.log(user);
     if (!user) return res.status(400).json({ message: '사용자를 찾을 수 없습니다.' });
 
     if (!user.is_approved) return res.status(403).json({ message: '관리자 승인이 필요합니다.' });
